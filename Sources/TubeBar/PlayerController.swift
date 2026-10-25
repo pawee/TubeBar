@@ -31,6 +31,8 @@ final class PlayerController: NSObject, NSWindowDelegate, WKUIDelegate {
     private let backButton: NSButton
     private let reloadButton: NSButton
     private let pinButton: NSButton
+    private let webContainer: NSView
+    private var fullscreenObservers: [NSKeyValueObservation] = []
     private let defaults = UserDefaults.standard
     private(set) var site: Site
 
@@ -52,7 +54,10 @@ final class PlayerController: NSObject, NSWindowDelegate, WKUIDelegate {
             let view = WKWebView(frame: .zero, configuration: config)
             view.customUserAgent = PlayerController.userAgent
             view.allowsBackForwardNavigationGestures = true
-            view.translatesAutoresizingMaskIntoConstraints = false
+            // Autoresizing, not Auto Layout: WebKit pulls the view out of its superview
+            // for element fullscreen, and constraint-based layout leaves it 0×0 (black screen).
+            view.translatesAutoresizingMaskIntoConstraints = true
+            view.autoresizingMask = [.width, .height]
             return view
         }
 
@@ -64,6 +69,7 @@ final class PlayerController: NSObject, NSWindowDelegate, WKUIDelegate {
         backButton = Self.barButton("chevron.left", "Back")
         reloadButton = Self.barButton("arrow.clockwise", "Reload")
         pinButton = Self.barButton("pin", "Keep on Top")
+        webContainer = NSView()
         super.init()
 
         configurePanel()
@@ -185,16 +191,42 @@ final class PlayerController: NSObject, NSWindowDelegate, WKUIDelegate {
             bar.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -10),
         ])
 
+        webContainer.translatesAutoresizingMaskIntoConstraints = false
+        content.addSubview(webContainer)
+        NSLayoutConstraint.activate([
+            webContainer.topAnchor.constraint(equalTo: bar.bottomAnchor),
+            webContainer.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            webContainer.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            webContainer.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+        ])
+        content.layoutSubtreeIfNeeded()
+
         for view in webViews {
             view.uiDelegate = self
-            content.addSubview(view)
-            NSLayoutConstraint.activate([
-                view.topAnchor.constraint(equalTo: bar.bottomAnchor),
-                view.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-                view.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-                view.bottomAnchor.constraint(equalTo: content.bottomAnchor),
-            ])
+            view.frame = webContainer.bounds
+            webContainer.addSubview(view)
         }
+
+        // WebKit sometimes restores a stale frame after leaving fullscreen → shrunken page.
+        fullscreenObservers = webViews.map { view in
+            view.observe(\.fullscreenState, options: [.new]) { [weak self] view, _ in
+                for delay in [0.0, 0.5] {     // again after the exit animation settles
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                        MainActor.assumeIsolated { self?.refit(view) }
+                    }
+                }
+            }
+        }
+    }
+
+    private func refit(_ view: WKWebView) {
+        guard view.fullscreenState == .notInFullscreen else { return }
+        if view.superview !== webContainer { webContainer.addSubview(view) }
+        view.frame = webContainer.bounds
+        view.isHidden = webViews.firstIndex(of: view) != site.rawValue
+        // YouTube Music's player keeps the <video> at its fullscreen-exit size until
+        // it sees a resize; nudge it to recalculate.
+        view.evaluateJavaScript("window.dispatchEvent(new Event('resize'))")
     }
 
     private static func barButton(_ symbol: String, _ label: String) -> NSButton {

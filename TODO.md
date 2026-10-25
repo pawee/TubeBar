@@ -2,14 +2,13 @@
 
 ## Done
 - v0.1: menu bar icon, ⌥` toggle, YouTube/Music tabs, pin (floating + all Spaces), saved size/position, open at login
+- Verified: Google sign-in, playback while hidden, media keys / Now Playing, hidden from ⌘-Tab
+- Published to GitHub (pawee/TubeBar)
 
-## Open questions (verify on first run)
-- Google sign-in works inside the web view with the Safari UA?
-- Audio keeps playing when the panel is hidden?
-- Media keys / Now Playing pick up playback?
-- Element fullscreen video behaves in the panel?
-- Hidden from AltTab app as well as ⌘-Tab?
+## Open
+- Fullscreen video (F key) showed a black screen. Fix attempted: web views use autoresizing
+  instead of Auto Layout. Verify; also check the Dock reappears after exiting fullscreen
+  (known macOS bug with accessory apps, FB24577577).
 
 ## Next
-- Fix whatever the first run turns up
 - Optional: app icon, configurable hotkey

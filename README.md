@@ -19,7 +19,7 @@ YouTube and YouTube Music in a floating panel you toggle with a hotkey. TubeBar 
 ## Build
 
 ```bash
-git clone https://github.com/<you>/TubeBar.git
+git clone https://github.com/pawee/TubeBar.git
 cd TubeBar
 ./build.sh
 ditto build/TubeBar.app /Applications/TubeBar.app
