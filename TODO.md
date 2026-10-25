@@ -8,7 +8,7 @@
 - Fixed: YouTube Music video stayed small after leaving fullscreen (refit + resize event)
 
 ## Open
-- Check the Dock reappears after exiting fullscreen (known macOS bug with accessory apps, FB24577577)
+- None
 
 ## Next
 - Optional: app icon, configurable hotkey
